@@ -32,7 +32,7 @@
         <div class="form-group">
           <label>인증번호</label>
           <div class="verify-row">
-            <input type="text" placeholder="인증번호 6자리" v-model="valifyNum"/>
+            <input type="text" placeholder="인증번호 6자리" v-model="verifyNum"/>
             <button class="resend-btn" @click="validationNum">재전송</button>
           </div>
           <small>이메일로 전송된 인증번호를 입력해주세요</small>
@@ -73,7 +73,7 @@
         </div>
 
         <!-- 회원가입 버튼 -->
-        <button class="signup-btn" @="register">회원가입</button>
+        <button class="signup-btn" @click="register">회원가입</button>
 
         <!-- 로그인 링크 -->
         <div class="login-link">
@@ -87,13 +87,15 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import Header from './Header.vue';
-import axios from 'axios';
+import apiClient from '@/utils/axios';
 
+const router = useRouter();
 const email = ref("");
 const nickname = ref("")
-const varifyNum = ref(0)
-const varifyNumCheck = ref(0)
+const verifyNum = ref("")
+const verifyNumCheck = ref("")
 const gender = ref("남")
 const age = ref(20)
 const password = ref("")
@@ -106,16 +108,17 @@ const validationNum = async () => {
     return;
   }
 
-  const data = new FormData();
-  data.append("mail",email.value)
+  const data = { mail: email.value };
 
-  await axios.post('http://localhost:8080/validation/sendmail',data).then(
-    (res) => {
-      console.log(res.data)
-      varifyNumCheck.value = res.data
-      alert("인증번호가 발송되었습니다.")
-    }
-  )
+  try {
+    const res = await apiClient.post('/api/auth/sendmail', data);
+    console.log(res.data);
+    verifyNumCheck.value = String(res.data);
+    alert("인증번호가 발송되었습니다.");
+  } catch (error) {
+    console.error("인증번호 발송 에러:", error);
+    alert("인증번호 발송 실패: 서버 오류가 발생했습니다.");
+  }
 }
 
 const register = async () => {
@@ -129,7 +132,7 @@ const register = async () => {
     return;
   }
 
-  if(varifyNum.value != varifyNumCheck.value){
+  if(verifyNum.value != verifyNumCheck.value){
     alert("인증번호를 제대로 입력해주세요");
     return;
   }
@@ -140,7 +143,15 @@ const register = async () => {
     userPassword: password.value
   }
 
-  await axios.post('http//localhost:8080/user/register')
+  try {
+    await apiClient.post('/api/auth/register', data);
+    alert("회원가입이 완료되었습니다.");
+    router.push('/login');
+  } catch (error) {
+    console.error("회원가입 에러:", error);
+    const errorMsg = error.response?.data?.message || "서버 오류가 발생했습니다.";
+    alert(`회원가입 실패: ${errorMsg} (잠시 후 다시 시도해주세요)`);
+  }
 }
 
 </script>
